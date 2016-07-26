@@ -1,6 +1,6 @@
 % inverse kinematics solution from solver
 % size: time step * 6
-qc = [];
+qc = csvread('');
 % should be your chosen pose of first time step
 pose = [];
 % store the pose along the time array
