@@ -1,7 +1,21 @@
 #include "ur_kin.h"
-
 #include <math.h>
 #include <stdio.h>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+
+using namespace std;
+
+template <typename T>
+T convert(const string& input) {
+    istringstream iss(input);
+    T data;
+    iss >> data;
+    return data;
+}
 
 namespace ur_kinematics {
     
@@ -50,15 +64,6 @@ namespace ur_kinematics {
         *T = (d1 + (d6*(c234*c5-s234*s5))/2.0 + a3*(s2*c3+c2*s3) + a2*s2 -
               (d6*(c234*c5+s234*s5))/2.0 - d5*c234); T++;
         *T = 0.0; T++; *T = 0.0; T++; *T = 0.0; T++; *T = 1.0;
-    }
-    
-    void valuing(const int k, double* T){
-        double mat[] = {};
-        
-        for (int i=0; i<16; i++) {
-            *T = mat[i+k*16];
-            T++;
-        }
     }
     
     int inverse(const double* T, double* q_sols, double q6_des) {
@@ -209,27 +214,64 @@ namespace ur_kinematics {
     }
 };
 
+void valuing(string filename, double* mat){
+    fstream data_file(filename);
+    string data((istreambuf_iterator<char>(data_file)), istreambuf_iterator<char>());
+    string strTodouble;
+    vector<double> data_vec;
+    for_each(data.begin(), data.end(), [&](char number) {
+        if (number != ',') {
+            strTodouble += number;
+        }
+        else {
+            data_vec.push_back(convert<double>(strTodouble));
+            strTodouble.clear();
+        }
+    });
+    data_vec.push_back(atof(strTodouble.c_str()));
+    
+    int i = 0;
+    for (auto vec : data_vec) {
+        mat[i] = vec;
+        i++;
+    }
+}
+
+void assigning(double*T, double* mat, int k){
+    for (int i=0; i<16; i++){
+        *T = mat[i+k*16];
+        T++;
+    }
+}
+
 using namespace std;
 using namespace ur_kinematics;
 
-int main(int argc, char* argv[])
-{
-    double* T = new double[16];
-    //double q[6] = {0.0, 0.0, 1.0, 0.0, 1.0, 0.0};
-    //forward(q, T);
-
+int main(int argc, char* argv[]){
+    string inputfile = "/Users/ryanylj/Desktop/coffee_motion_implementation/eightcircling/circle/invMat.csv";
+    int entries = 16;
+    int timesteps = 360;
+    double mat[entries*timesteps];
+    valuing(inputfile, mat);
+    
+    string outputfile = "/Users/ryanylj/Desktop/coffee_motion_implementation/eightcircling/circle/iksolution.csv";
+    ofstream output(outputfile);
+    
     double q_sols[8*6];
     int num_sols;
-    for (int k=0;k<100;k++){
+    
+    for (int k=0;k<timesteps;k++){
         double* T = new double[16];
-        valuing(k, T);
+        assigning(T, mat, k);
         num_sols = inverse(T, q_sols);
         for(int i=0;i<6;i++){
-            printf("%1.6f %1.6f %1.6f %1.6f %1.6f %1.6f;\n",
-               q_sols[i*6+0], q_sols[i*6+1], q_sols[i*6+2], q_sols[i*6+3], q_sols[i*6+4], q_sols[i*6+5]);
+            printf("%1.6f, %1.6f, %1.6f, %1.6f, %1.6f, %1.6f\n",
+                   q_sols[i*6+0], q_sols[i*6+1], q_sols[i*6+2], q_sols[i*6+3], q_sols[i*6+4], q_sols[i*6+5]);
+            output << q_sols[i*6+0] << ", " << q_sols[i*6+1] << ", " << q_sols[i*6+2] << ", " << q_sols[i*6+3] << ", " << q_sols[i*6+4] << ", " << q_sols[i*6+5] << "\n";
         }
         printf("\n");
     }
+    output.close();
     
     return 0;
 }
