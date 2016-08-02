@@ -34,3 +34,4 @@ ur5 = SerialLink(ur5_L, 'name', 'ur5-6axis');
 % ur5.ikineType = 'puma';
 
 ur5.plot(traj);
+csvwrite('iksolution.csv',output);
